@@ -4,7 +4,7 @@
  Author      : gremlin
  Version     :
  Copyright   :
- Description : Hello World in GTK+
+ Description : My first program with OpenMP
  ============================================================================
  */
 
@@ -32,8 +32,6 @@ struct mydata {
 
 static gboolean tick(gpointer data)
 {
-    //static unsigned int count = 0;
-    //static double timesum = 0.0;
     int i, j;
     int g = gen % 2;
     struct mydata *p = data;
@@ -44,10 +42,8 @@ static gboolean tick(gpointer data)
     g_timer_start(tcalc);
 
 #pragma omp target map(tofrom: w)
-//#pragma omp parallel
     {
 #pragma omp parallel for
-//#pragma omp parallel for shared(w)
         for (j = 0; j < WORLDSIZE; ++j) {
             for (i = 0; i < WORLDSIZE; ++i) {
                 uint16_t c = 0;
@@ -87,38 +83,6 @@ static gboolean tick(gpointer data)
     for (int n=0; n < PAINTERS; ++n)
         gtk_widget_queue_draw((GtkWidget*) p[n].d);
 
-    /*{
-        /#if (omp_get_thread_num() == 0)#/ {
-            cairo_region_t *cairoRegion = cairo_region_create();
-            GdkDrawingContext *gdk_dc = gdk_window_begin_draw_frame(gtk_widget_get_window(p[0].d), cairoRegion);
-            cairo_t *cr = gdk_drawing_context_get_cairo_context(gdk_dc);
-            gtk_widget_draw(p[0].d, cr);
-            gdk_window_end_draw_frame(gtk_widget_get_window(p[0].d), gdk_dc);
-            cairo_region_destroy(cairoRegion);
-        } /#else#/ {
-            cairo_region_t *cairoRegion = cairo_region_create();
-            GdkDrawingContext *gdk_dc = gdk_window_begin_draw_frame(gtk_widget_get_window(p[1].d), cairoRegion);
-            cairo_t *cr = gdk_drawing_context_get_cairo_context(gdk_dc);
-            gtk_widget_draw(p[1].d, cr);
-            gdk_window_end_draw_frame(gtk_widget_get_window(p[1].d), gdk_dc);
-            cairo_region_destroy(cairoRegion);
-        }
-    }
-    ++gen;
-    */
-
-    //timesum += g_timer_elapsed(tcalc, NULL) * 1000.0;
-    //++count;
-    //if (g_timer_elapsed(treal, NULL) > 1.0) {
-    //    printf("[%3lu] draw = %.3f\n", gen, timesum / count);
-    //    timesum = 0.0;
-    //    count = 0;
-    //    g_timer_start(treal);
-    //}
-    //if (done) {
-    //    ++gen;
-    //    done = 0;
-    //}
     if (gen > 1000) {
         g_message("bye bye");
         g_application_quit(G_APPLICATION(app));
@@ -137,13 +101,9 @@ gboolean draw_callback(GtkWidget *widget, cairo_t *cr, gpointer data)
     struct mydata *p = data;
     guint i, j;
     guint width, /*height,*/ size, x, y, l;
-    uint8_t *wo = (uint8_t*) w+(((gen + 1)% 2)*WORLDSIZE*WORLDSIZE);    // old
     uint8_t *wn = (uint8_t*) w+((gen % 2)*WORLDSIZE*WORLDSIZE);         // new
 
-    //g_timer_start(tcalc);
-
     width = gtk_widget_get_allocated_width(widget);
-    //height = gtk_widget_get_allocated_height(widget);
 
     GtkStyleContext *context;
     context = gtk_widget_get_style_context(widget);
@@ -158,13 +118,11 @@ gboolean draw_callback(GtkWidget *widget, cairo_t *cr, gpointer data)
         for (j = 0; j < WORLDSIZE / PAINTERS; ++j) {
             x = l * i;
             y = l * j;
-            //if (wn[offset + j * WORLDSIZE + i] != wo[offset + j * WORLDSIZE + i]){
-                if (wn[offset + j * WORLDSIZE + i])
-                    cairo_set_source_surface (cr, c1, x, y);
-                else
-                    cairo_set_source_surface (cr, c0, x, y);
-                cairo_paint(cr);
-            //}
+            if (wn[offset + j * WORLDSIZE + i])
+                cairo_set_source_surface (cr, c1, x, y);
+            else
+                cairo_set_source_surface (cr, c0, x, y);
+            cairo_paint(cr);
         }
     }
     if ((--done) == 0) {
@@ -184,14 +142,13 @@ gboolean draw_callback(GtkWidget *widget, cairo_t *cr, gpointer data)
 
 static void start(GtkWidget* self, gpointer user_data)
 {
-    int width, /*height,*/ l, stride;
+    int width, l, stride;
     int iw, ih;
     unsigned char *data;
     cairo_t *cr;
     cairo_surface_t *temp;
 
     width = gtk_widget_get_allocated_width(GTK_WIDGET(self));
-    //height = gtk_widget_get_allocated_height(GTK_WIDGET(self));
     l = width / WORLDSIZE;
     printf("cell size %d / %d = %d\n", width, WORLDSIZE, l);
     stride = cairo_format_stride_for_width(CAIRO_FORMAT_RGB24, l);
@@ -250,32 +207,6 @@ static void activate(GtkApplication *app, __attribute__ ((unused)) gpointer user
         g_signal_connect(G_OBJECT(drawing_area), "map", G_CALLBACK(start), p);
         gtk_box_pack_start(GTK_BOX(box), drawing_area, false, true, 0);
     }
-//    drawing_area = gtk_drawing_area_new();
-//    gtk_widget_set_name(drawing_area, "d1");
-//    p[1].d = drawing_area;
-//    p[1].n = 1;
-//    gtk_widget_set_size_request(drawing_area, WORLDSIZE, WORLDSIZE / PAINTERS);
-//    g_signal_connect(G_OBJECT(drawing_area), "draw", G_CALLBACK (draw_callback), &(p[1]));
-//    g_signal_connect(G_OBJECT(drawing_area), "map", G_CALLBACK(start), p);
-//    gtk_box_pack_start(GTK_BOX(box), drawing_area, false, true, 0);
-//
-//    drawing_area = gtk_drawing_area_new();
-//    gtk_widget_set_name(drawing_area, "d2");
-//    p[2].d = drawing_area;
-//    p[2].n = 2;
-//    gtk_widget_set_size_request(drawing_area, WORLDSIZE, WORLDSIZE / PAINTERS);
-//    g_signal_connect(G_OBJECT(drawing_area), "draw", G_CALLBACK (draw_callback), &(p[2]));
-//    g_signal_connect(G_OBJECT(drawing_area), "map", G_CALLBACK(start), p);
-//    gtk_box_pack_start(GTK_BOX(box), drawing_area, false, true, 0);
-
-//    drawing_area = gtk_drawing_area_new();
-//    gtk_widget_set_name(drawing_area, "two");
-//    p[3].d = drawing_area;
-//    p[3].n = 3;
-//    gtk_widget_set_size_request(drawing_area, 1200, 1200 / 4);
-//    g_signal_connect(G_OBJECT(drawing_area), "draw", G_CALLBACK (draw_callback), &(p[3]));
-//    g_signal_connect(G_OBJECT(drawing_area), "map", G_CALLBACK(start), p);
-//    gtk_box_pack_start(GTK_BOX(box), drawing_area, false, true, 0);
 
     gtk_container_add(GTK_CONTAINER(window), box);
     gtk_widget_show_all(window);
@@ -287,7 +218,6 @@ int main(int argc, char *argv[])
     int i, j;
 
 #pragma omp target
-//#pragma omp parallel
     {
 #pragma omp master
         {
@@ -300,13 +230,6 @@ int main(int argc, char *argv[])
             w[1][i][j] = 99;
         }
     }
-
-    //w[0][0][1] = 1;
-    //w[0][0][2] = 1;
-    //w[0][0][3] = 1;
-    //w[0][1][0] = 1;
-    //w[0][1][1] = 1;
-    //w[0][1][2] = 1;
 
     app = gtk_application_new("it.gremlin.gopenmplife", G_APPLICATION_FLAGS_NONE);
     g_signal_connect(app, "activate", G_CALLBACK(activate), NULL);
